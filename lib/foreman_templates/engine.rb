@@ -16,6 +16,19 @@ module ForemanTemplates
     initializer 'foreman_templates.register_plugin', :before => :finisher_hook do
       Foreman::Plugin.register :foreman_templates do
         requires_foreman '>= 1.14'
+
+        security_block :templates do
+          permission :import_templates, {
+            :template => [:import],
+            :"api/v2/template" => [:import]
+          }, :resource_type => 'Template'
+        end
+
+        role = Role.where(:name => 'Manager').first
+        if role
+          role.add_permissions!('import_templates') unless role.permission_names.include?(:import_templates)
+        end
+
       end
     end
 
