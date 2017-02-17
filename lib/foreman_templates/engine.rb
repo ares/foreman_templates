@@ -24,11 +24,13 @@ module ForemanTemplates
           }, :resource_type => 'Template'
         end
 
-        role = Role.where(:name => 'Manager').first
-        if role
-          role.add_permissions!('import_templates') unless role.permission_names.include?(:import_templates)
+        begin
+          role = Role.where(:name => 'Manager').first
+          if role
+            role.add_permissions!('import_templates') unless role.permission_names.include?(:import_templates)
+          end
+        rescue
         end
-
       end
     end
 
