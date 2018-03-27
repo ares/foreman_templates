@@ -9,7 +9,6 @@ module Api
         param :filter, String, :required => false, :desc => N_("Export templates with names matching this regex (case-insensitive; snippets are not filtered).")
         param :negate, :bool, :required => false, :desc => N_("Negate the prefix (for purging).")
         param :dirname, String, :required => false, :desc => N_("The directory within Git repo containing the templates")
-        param :verbose, :bool, :required => false, :desc => N_("Set verbosity of import")
       end
 
       api :POST, "/templates/import/", N_("Initiate Import")
@@ -17,21 +16,22 @@ module Api
       param :associate, Setting::TemplateSync.associate_types.keys, :required => false, :desc => N_("Associate to OS's, Locations & Organizations. Options are: always, new or never.")
       param :force, :bool, :required => false, :desc => N_("Update templates that are locked")
       param :lock, :bool, :required => false, :desc => N_("Lock imported templates")
+      param :verbose, :bool, :required => false, :desc => N_("Show template diff in response")
       param_group :foreman_template_sync_params
       def import
-        results = ForemanTemplates::TemplateImporter.new(template_import_params).import!
-        render :json => { :message => results }
+        verbose = params['verbose']
+        @result = ForemanTemplates::TemplateImporter.new(template_import_params).import!
+        render :json => { :message => { :templates => @result[:results].map { |res| res.to_h(verbose) },
+                                        :repo => @result[:repo],
+                                        :branch => @result[:branch] } }
       end
 
       api :POST, "/templates/export", N_("Initiate Export")
       param :metadata_export_mode, Setting::TemplateSync.metadata_export_mode_types.keys, :required => false, :desc => N_("Specify how to handle metadata")
       param_group :foreman_template_sync_params
       def export
-        ForemanTemplates::TemplateExporter.new(template_export_params).export!
-        render :json => { :message => _('Success') }
-      rescue StandardError => e
-        logger.debug e
-        render :json => { :message => (_('Something went wrong during export: %s') % e.message) }, :status => :internal_server_error
+        @result = ForemanTemplates::TemplateExporter.new(template_export_params).export!
+        render :json => { :message => @result.to_h }, :status => @result.exported ? 200 : 500
       end
     end
   end
